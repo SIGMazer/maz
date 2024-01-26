@@ -24,6 +24,7 @@
 
 #define MAZ_ASSERT assert
 #define MAZ_REALLOC realloc
+#define MAZ_FREE free
 
 #include <stdio.h>
 #include <assert.h>
@@ -36,54 +37,38 @@ typedef enum {
     MAZ_INFO,
     MAZ_WARN,
     MAZ_ERROR,
-}maz_log_level;
+} maz_log_level;
+
+typedef struct {
+    size_t count;
+    size_t capacity;
+    void *items;
+} Maz_da_t;
 
 #define DA_INIT_CAPACITY 4
-#define maz_da_append(da, item) \
-    do { \
-        if((da)->count >= (da)->capacity){\
-            (da)->capacity = (da)->capacity == 0? DA_INIT_CAPACITY : (da)->capacity*2;\
-            (da)->items = MAZ_REALLOC((da)->items, sizeof(*(da)->items) * (da)->capacity);\
-            MAZ_ASSERT((da)->items);\
-        }\
-        (da)->items[(da)->count++] = item;\
-    } while (0)
+#define da_header(da) ((Maz_da_t *)(da) -1)
+#define maz_dalen(da) ((da) ? da_header(da)->count : 0)
+#define maz_daput(da, item) (maz_damybegrow(da, 1), (da)[da_header(da)->count++] = (item))
+#define maz_daget(da, index) ((da)[index])
+#define maz_daset(da, index, item) ((da)[index] = (item))
+#define maz_dadel(da, index) (maz_dadeln(da, index, 1))
+#define maz_dadeln(da, index, size) (maz_damemmove(da, index, index + size, maz_dalen(da) - index - size), da_header(da)->count -= size)
+#define maz_daclear(da) ((da) ? da_header(da)->count = 0 : 0)
+#define maz_dafree(da) ((da) ? (MAZ_FREE(da_header(da)), (da) = NULL) : 0)
+#define maz_damemmove(da, dst, src, count) (memmove(&(da)[dst], &(da)[src], (count) * sizeof(*(da))))
+#define maz_dacpy(dst, src) ((dst) = maz_dancpyf(src, sizeof(*(dst)), maz_dalen(src)))
+#define maz_dancpy(dst, src, n) ((dst) = maz_dancpyf(src, sizeof(*(dst)), n))
+#define maz_daputmany(da,items,size) (maz_damybegrow(da, size), memcpy(&(da)[da_header(da)->count], items, (size) * sizeof(*(da))), da_header(da)->count+= (size))
+#define maz_daputat(da, index, item) \
+    (maz_damybegrow(da, 1), maz_damemmove(da, index + 1, index, maz_dalen(da) - index), (da)[index] = (item), da_header(da)->count++)
 
-#define maz_da_append_many(da, new_itms, new_items_count)\
-    do{\
-        if((da)->count + new_items_count >= (da)->capacity){\
-            (da)->capacity = (da)->capacity == 0? DA_INIT_CAPACITY : (da)->capacity*2;\
-            while((da)->capacity < (da)->count + new_items_count){\
-                (da)->capacity *= 2;\
-            }\
-            (da)->items = MAZ_REALLOC((da)->items, sizeof(*(da)->items) * (da)->capacity);\
-            MAZ_ASSERT((da)->items);\
-        }\
-        memcpy((da)->items + (da)->count, new_items, sizeof(*(da)->items) * new_items_count);\
-        (da)->count += new_items_count;\
-    }while(0)
 
-#define maz_da_remove_item(da, item) \
-    do{\
-        for(int i = 0; i < (da)->count; i++){\
-            if((da)->items[i] == item){\
-                (da)->items[i] = (da)->items[(da)->count - 1];\
-                for(int j = i; j < (da)->count - 1; j++){\
-                    (da)->items[j] = (da)->items[j + 1];\
-                }\
-                (da)->count--;\
-                break;\
-            }\
-        }\
-    }while(0)
+#define maz_damybegrow(da, addlen) \
+    (!(da) || da_header(da)->count + (addlen) >= da_header(da)->capacity ? \
+     (maz_dagrow(da,addlen,0),0) : 0)
 
-#define maz_da_remove_index(da, index) \
-    do {\
-        if((index) < (da)->count){\
-            (da)->items[(index)] = (da)->items[--(da)->count];\
-        }\
-    }while(0)
-
+#define maz_dagrow(da,addlen,cap) \
+    ((da) = maz_dagrowf(da, sizeof(*(da)), addlen, cap))
 
 void maz_log(maz_log_level level, const char* fmt, ...);
 
@@ -93,6 +78,41 @@ void maz_log(maz_log_level level, const char* fmt, ...);
 
 #ifdef MAZ_IMPLEMENTATION
 
+void *maz_dancpyf(void *da, size_t elemsize, size_t n){
+    if(da == NULL){
+        return NULL;
+    }
+    void *cpy = MAZ_REALLOC(NULL, elemsize * n + sizeof(Maz_da_t));
+    MAZ_ASSERT(cpy != NULL && "Could not allocate memory");
+    cpy = (char *)cpy + sizeof(Maz_da_t);
+    memcpy(cpy, da, elemsize * n);
+    da_header(cpy)->count = n;
+    da_header(cpy)->capacity = n;
+    return cpy;
+}
+
+void *maz_dagrowf(void *da, size_t elemsize, size_t addlen, size_t mincap){
+    if(da == NULL){
+        mincap = (mincap > DA_INIT_CAPACITY) ? mincap : DA_INIT_CAPACITY;
+        da = MAZ_REALLOC(NULL, elemsize * mincap + sizeof(Maz_da_t));
+        MAZ_ASSERT(da != NULL && "Could not allocate memory");
+        da = (char *)da + sizeof(Maz_da_t);
+        da_header(da)->count = 0;
+        da_header(da)->capacity = mincap;
+        return da;
+    }else{
+        size_t newcap = da_header(da)->capacity + addlen;
+        if(newcap < mincap){
+            newcap = mincap;
+        }
+        da = (char *)da - sizeof(Maz_da_t);
+        da = MAZ_REALLOC(da, elemsize * newcap + sizeof(Maz_da_t));
+        MAZ_ASSERT(da != NULL && "Could not allocate memory");
+        da = (char *)da + sizeof(Maz_da_t);
+        da_header(da)->capacity = newcap;
+        return da;
+    }
+}
 
 void maz_log(maz_log_level level, const char *fmt, ...){
     switch (level) { 
