@@ -1,23 +1,117 @@
-// Copyright 2023 Mazin Sayed <mazinasd7@gmail.com>
+// TABLE OF CONTENTS
+// -----------------
+// 1. Table of Contents
+// 2. Usage 
+// 3. Documentation
+//    3.1. Dynamic Arrays
+//        3.1.1. Non-function interface
+//        3.1.2. Functions (macros)
+// 4. Credits
+// 5. License
+// -----------------
+
+// USAGE
+// ---------------------
+// To  use this library, do this in one C file:
+//      #define MAZ_IMPLEMENTATION
+//      #include "maz.h"
 //
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
+
+// DOCUMENTATION
+// -------------
+// 3. Documentation
+//    3.1. Dynamic Arrays
+//        3.1.1. Non-function interface
+// ------------------------
+// Declare an empty dynamic array of type T
+// T* da = NULL;
+
+// Access the i'th item of a dynamic array 'da' of type T
+// T* da:
+// da[i]
+
+//        3.1.2. Functions (macros)
+// ------------------------
+// maz_daput:
+//   void maz_daput(T* da, T item);
+//     Adds an item to the end of the dynamic array.
+
+// maz_daget:
+//   T maz_daget(T* da, size_t index);
+//     Retrieves the item at the specified index in the dynamic array.
+
+// maz_daset:
+//   void maz_daset(T* da, size_t index, T item);
+//     Sets the item at the specified index in the dynamic array.
+
+// maz_dadel:
+//   void maz_dadel(T* da, size_t index);
+//     Deletes the item at the specified index in the dynamic array.
+
+// maz_dadeln:
+//   void maz_dadeln(T* da, size_t index, size_t size);
+//     Deletes multiple items starting from the specified index in the dynamic array.
+
+// maz_daclear:
+//   void maz_daclear(T* da);
+//     Clears the dynamic array (sets count to 0).
+
+// maz_dafree:
+//   void maz_dafree(T* da);
+//     Frees the dynamic array.
+
+// maz_daputat:
+//   void maz_daputat(T* da, size_t index, T item);
+//     Inserts an item at the specified index in the dynamic array.
+
+// maz_daputmany:
+//   void maz_daputmany(T* da, T* items, size_t size);
+//     Adds multiple items to the end of the dynamic array.
+
+// maz_damybegrow:
+//   int maz_damybegrow(T* da, size_t addlen);
+//     Checks and grows the dynamic array if necessary.
+
+// maz_dagrow:
+//   void maz_dagrow(T* da, size_t addlen, size_t cap);
+//     Grows the dynamic array to accommodate additional elements.
+
+// maz_damemmove:
+//   void maz_damemmove(T* da, size_t dst, size_t src, size_t count);
+//     Moves memory within the dynamic array.
+
+// maz_dacpy:
+//   void maz_dacpy(T* dst, T* src);
+//     Copies the content of one dynamic array to another.
+
+// maz_dancpy:
+//   void maz_dancpy(T* dst, T* src, size_t n);
+//     Copies a specified number of elements from one dynamic array to another.
+
+// maz_dancpyf:
+//   void* maz_dancpyf(void* da, size_t elemsize, size_t n);
+//     Copies the content of one dynamic array to a new dynamic array.
+// 
+// maz_dadelswap:
+//      void maz_dadelswap(T* da, size_t index);
+//      Deletes the item at the specified index in the dynamic array and replaces it with the last item in the array.
+//      This is useful when the order of the items in the array does not matter.
+//      This is faster than maz_dadel O(1) performace, but the order of the items in the array is not preserved.
 //
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
+
+// CREDITS
+// -------
+// 4. Credits
+// ------------------------
+// Credits and acknowledgments for the code and libraries used.
 //
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// LICENSE
+// -------
+// 5. License
+// ------------------------
+// This software is dual-licensed to the public domain and under MIT.
+// See end of file for detailed license information.
+
 
 #ifndef MAZ_H
 #define MAZ_H
@@ -52,6 +146,7 @@ typedef struct {
 #define maz_daget(da, index) ((da)[index])
 #define maz_daset(da, index, item) ((da)[index] = (item))
 #define maz_dadel(da, index) (maz_dadeln(da, index, 1))
+#define maz_dadelswap(da, index) ((da)[index] = (da)[maz_dalen(da) - 1], da_header(da)->count--)
 #define maz_dadeln(da, index, size) (maz_damemmove(da, index, index + size, maz_dalen(da) - index - size), da_header(da)->count -= size)
 #define maz_daclear(da) ((da) ? da_header(da)->count = 0 : 0)
 #define maz_dafree(da) ((da) ? (MAZ_FREE(da_header(da)), (da) = NULL) : 0)
@@ -143,3 +238,24 @@ void maz_log(maz_log_level level, const char *fmt, ...){
 }
 
 #endif // MAZ_IMPLEMENTATION
+
+// Copyright 2023 Mazin Sayed <mazinasd7@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
